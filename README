@@ -1,2 +1,13 @@
-SWTOR Log parser/analyzer app.
-Build instructions/binaries coming soon
+SWTOR Log multi-person parser/analyzer app.
+
+Planned features include:
+*Damage/Heal analysis (breakdown by ability, etc.)
+*Total damage/heals per second
+*Breakdown by the different times you are in combat
+*Instantly share your data with other instances of the app over the internet,
+combining your logs with others.
+*more to come...
+
+Requries Adobe AIR (http://get.adobe.com/air)
+Download and run swtor_log_app.air to install 
+(note: may not always be up to date with current source)
