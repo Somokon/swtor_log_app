@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   creationComplete="init()"
+					   width="1024" height="768">
+	<s:DropDownList top="10" left="60" width="300" id="list" change="displayData(event)"/>
+	<mx:TabNavigator id="tabs" width="66%" height="100%" top="50">
+		<mx:VBox id="damageTab" label="Damage" width="100%" height="100%" />
+		<mx:VBox id="healsTab" label="Healing" width="100%" height="100%" />
+	</mx:TabNavigator>
+	<s:Label top="13" left="10" text="View:" fontWeight="bold" fontSize="16"/>
+	<s:Button label="Upload log..." right="10" top="10" click="uploadClick(event)"/>
+	<s:Button label="Clear data" top="40" right="10" 
+			  click='Alert.show(	"Are you sure you want to clear all data?", "Warning",
+									Alert.OK|Alert.CANCEL, this, clearData,
+			  						null, Alert.OK
+			  )'
+	/>
+	<fx:Script>
+		<![CDATA[
+			import mx.charts.CategoryAxis;
+			import mx.charts.ColumnChart;
+			import mx.charts.series.ColumnSeries;
+			import mx.collections.ArrayCollection;
+			import mx.containers.VBox;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			
+			import spark.components.DropDownList;
+			import spark.events.IndexChangeEvent;
+
+			public var parser:Parser;
+			public var fileOpenStream:FileStream;
+			public var loader:URLLoader;
+			
+			public var charts:Dictionary = new Dictionary();
+			public var actorNames:Array = new Array();
+			
+			public function init():void {
+				
+				this.addEventListener(Event.ADDED_TO_STAGE, main);
+			}
+			
+			
+			public function main(event:Event):void {
+				
+				this.removeEventListener(Event.ADDED_TO_STAGE, main);
+				
+				parser = new Parser();
+				parser.addEventListener(ParserEvent.PARSING_DONE, onParseComplete);
+			}
+			
+			
+			public function onParseComplete(event:ParserEvent):void {
+				
+				for each (var actor:Actor in parser.actorList) {
+					
+					var damageData:ArrayCollection = parser.getDamageData(actor.id);
+					var healData:ArrayCollection = parser.getHealData(actor.id);
+					
+					var damageChart:ColumnChart = new ColumnChart();
+					damageChart.percentHeight = 100;
+					damageChart.percentWidth = 100;
+					damageChart.showDataTips = true;
+					damageChart.dataProvider = damageData;
+					
+					var hAxis1:CategoryAxis = new CategoryAxis();
+					hAxis1.categoryField = "Ability";
+					hAxis1.dataProvider = damageData;
+					damageChart.horizontalAxis = hAxis1;
+					
+					var damageSeries:ColumnSeries = new ColumnSeries();
+					damageSeries.setStyle("fill", "red");
+					damageSeries.yField = "Damage";
+					damageSeries.xField = "Ability";
+					damageSeries.displayName = "Damage";
+					
+					damageChart.series = [damageSeries];
+					
+					
+					var healChart:ColumnChart = new ColumnChart();
+					healChart.percentHeight = 100;
+					healChart.percentWidth = 100;
+					healChart.showDataTips = true;
+					healChart.dataProvider = healData;
+					
+					var hAxis2:CategoryAxis = new CategoryAxis();
+					hAxis2.categoryField = "Ability";
+					hAxis2.dataProvider = healData;
+					healChart.horizontalAxis = hAxis2;
+					
+					var healSeries:ColumnSeries = new ColumnSeries();
+					healSeries.setStyle("fill", "green");
+					healSeries.yField = "Healing";
+					healSeries.xField = "Ability";
+					healSeries.displayName = "Healing";
+					
+					healChart.series = [healSeries];
+					
+					charts[actor.name] = {damage:damageChart, healing:healChart};
+					
+					actorNames.push(actor.name);
+				}
+				
+				list.dataProvider = new ArrayCollection(actorNames);
+			}
+			
+			public function displayData(event:IndexChangeEvent):void {
+				
+				damageTab.removeAllChildren();
+				damageTab.addChild(charts[actorNames[event.newIndex]].damage);
+				healsTab.removeAllChildren();
+				healsTab.addChild(charts[actorNames[event.newIndex]].healing);
+			}
+
+
+			public function uploadClick(event:MouseEvent):void {
+				
+				var file:File = new File();
+				file.addEventListener(Event.SELECT, logSelect);
+				file.browseForOpen("Select a log...");
+			}
+			
+			
+			public function logSelect(event:Event):void {
+				
+				fileOpenStream = new FileStream();
+				fileOpenStream.openAsync(event.target as File, FileMode.READ);
+				fileOpenStream.addEventListener(Event.COMPLETE, readFile);
+				//TODO: handle error
+			}
+			
+			public function readFile(event:Event):void {
+				
+				var log:String = fileOpenStream.readUTFBytes(fileOpenStream.bytesAvailable);
+				fileOpenStream.close();
+				
+				parser.parse(log);
+			}
+			
+			
+			public function clearData(event:CloseEvent):void {
+				
+				if (event.detail == Alert.OK) {
+					
+					damageTab.removeAllChildren();
+					healsTab.removeAllChildren();
+					list.dataProvider.removeAll();
+					
+					charts = new Dictionary();
+					parser.clear();
+				}
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		
+	</fx:Declarations>
+</s:WindowedApplication>
